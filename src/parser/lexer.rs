@@ -48,6 +48,7 @@ impl<'input> Lexer<'input> {
         let cur = self.peek()?;
 
         match cur {
+            '0'..='9' => self.number(),
             'A'..='Z' | 'a'..='z' | '_' => self.identifier(),
             ' ' | '\t' | '\n' | '\r' => {
                 self.next();
@@ -64,6 +65,14 @@ impl<'input> Lexer<'input> {
 
         Some(self.token(TokenType::Identifier))
     }
+
+    fn number(&mut self) -> Option<Token<'input>> {
+        while self.peek().map_or(false, |c| is_digit(c, 10)) {
+            self.next();
+        }
+
+        Some(self.token(TokenType::Integer))
+    }
 }
 
 impl<'input> Iterator for Lexer<'input> {
@@ -72,6 +81,10 @@ impl<'input> Iterator for Lexer<'input> {
     fn next(&mut self) -> Option<Self::Item> {
         self.next_token()
     }
+}
+
+fn is_digit(c: &char, radix: u32) -> bool {
+    c.is_digit(radix) || c == &'_'
 }
 
 fn is_identifier(c: &char) -> bool {
@@ -86,9 +99,12 @@ mod tests {
     use super::*;
 
     macro_rules! token {
-        ($t:ident, $s:expr, $r:expr) => {
-            Token::new(TokenType::$t, $s, $r);
-        };
+        ($t:ident, $s:ident, $r:expr) => {{
+            let r = $r;
+            let idx = $s.find($r).expect("couldn't find pattern in str");
+            let range = idx..(idx + r.len());
+            Token::new(TokenType::$t, &$s[range.clone()], range)
+        }};
     }
 
     #[test]
@@ -96,9 +112,21 @@ mod tests {
         let s = "_ABC_DEF some_thing\nmore_IdeNt";
         let tokens = lex_input(s);
         let expected = vec![
-            token!(Identifier, "_ABC_DEF", 0..8),
-            token!(Identifier, "some_thing", 9..19),
-            token!(Identifier, "more_IdeNt", 20..30),
+            token!(Identifier, s, "_ABC_DEF"),
+            token!(Identifier, s, "some_thing"),
+            token!(Identifier, s, "more_IdeNt"),
+        ];
+        assert_eq!(expected, tokens);
+    }
+
+    #[test]
+    fn test_integer() {
+        let s = "1337 1234_5678\n12321";
+        let tokens = lex_input(s);
+        let expected = vec![
+            token!(Integer, s, "1337"),
+            token!(Integer, s, "1234_5678"),
+            token!(Integer, s, "12321"),
         ];
         assert_eq!(expected, tokens);
     }
