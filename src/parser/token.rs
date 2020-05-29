@@ -5,9 +5,52 @@ use std::ops::Range;
 pub enum TokenType {
     Error,
 
+    // Literals
+    String,
+    Float,
     Integer,
+    Bool,
 
+    // Identifier
     Identifier,
+
+    // Keywords
+    Def,
+    Let,
+    Loop,
+    While,
+    For,
+    If,
+    Else,
+    Or,
+    And,
+    Break,
+
+    // Some other chars
+    Bang,
+    Plus,
+    Minus,
+    Star,
+    Slash,
+    StarStar,
+    Colon,
+    Comma,
+    Dot,
+
+    LeftParen,
+    RightParen,
+    LeftBracket,
+    RightBracket,
+    LeftBrace,
+    RightBrace,
+
+    Equal,
+    EqualEqual,
+    NotEqual,
+    GreaterEqual,
+    Greater,
+    LessEqual,
+    Less,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

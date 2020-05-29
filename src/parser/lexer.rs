@@ -1,6 +1,39 @@
 use super::token::{Token, TokenType};
 use std::{iter::Peekable, str::Chars};
 
+const KEYWORDS: [(&'static str, TokenType); 10] = [
+    ("def", TokenType::Def),
+    ("let", TokenType::Let),
+    ("loop", TokenType::Loop),
+    ("while", TokenType::While),
+    ("for", TokenType::For),
+    ("if", TokenType::If),
+    ("else", TokenType::Else),
+    ("or", TokenType::Or),
+    ("and", TokenType::And),
+    ("break", TokenType::Break),
+];
+
+macro_rules! match_char {
+    ($self:ident, $ty:ident) => {{
+        $self.next();
+        Some($self.token(TokenType::$ty))
+    }};
+}
+
+macro_rules! match_two_chars {
+    ($self:ident, $ty:ident, $se:expr, $ty2:ident) => {{
+        $self.next();
+        match $self.peek() {
+            Some($se) => {
+                $self.next();
+                Some($self.token(TokenType::$ty2))
+            }
+            Some(_) | None => Some($self.token(TokenType::$ty)),
+        }
+    }};
+}
+
 #[derive(Debug, Clone)]
 pub struct Lexer<'input> {
     input: &'input str,
@@ -48,6 +81,33 @@ impl<'input> Lexer<'input> {
         let cur = self.peek()?;
 
         match cur {
+            '(' => match_char!(self, LeftParen),
+            ')' => match_char!(self, RightParen),
+            '{' => match_char!(self, LeftBracket),
+            '}' => match_char!(self, RightBracket),
+            '[' => match_char!(self, LeftBrace),
+            ']' => match_char!(self, RightBrace),
+
+            '!' => match_two_chars!(self, Bang, '=', NotEqual),
+            '+' => match_char!(self, Plus),
+            '-' => match_char!(self, Minus),
+            '*' => match_two_chars!(self, Star, '*', StarStar),
+            '/' => match_char!(self, Slash),
+            ':' => match_char!(self, Colon),
+            '.' => match_char!(self, Dot),
+            ',' => match_char!(self, Comma),
+
+            '=' => match_two_chars!(self, Equal, '=', EqualEqual),
+            '>' => match_two_chars!(self, Greater, '=', GreaterEqual),
+            '<' => match_two_chars!(self, Less, '=', LessEqual),
+
+            '#' => {
+                while self.peek().map_or(false, |c| c != &'\n') {
+                    self.next();
+                }
+                self.next_token()
+            }
+            '"' => self.string(),
             '0'..='9' => self.number(),
             'A'..='Z' | 'a'..='z' | '_' => self.identifier(),
             ' ' | '\t' | '\n' | '\r' => {
@@ -63,15 +123,50 @@ impl<'input> Lexer<'input> {
             self.next();
         }
 
-        Some(self.token(TokenType::Identifier))
+        self.keyword_or_ident()
+    }
+
+    fn keyword_or_ident(&mut self) -> Option<Token<'input>> {
+        let mut token = self.token(TokenType::Identifier);
+        token.ty = KEYWORDS
+            .iter()
+            .filter(|t| t.0 == token.repr)
+            .map(|t| t.1)
+            .next()
+            .unwrap_or(TokenType::Identifier);
+        Some(token)
     }
 
     fn number(&mut self) -> Option<Token<'input>> {
+        // TODO: Add floating numbers
+        // TODO: Add more number bases
         while self.peek().map_or(false, |c| is_digit(c, 10)) {
             self.next();
         }
 
         Some(self.token(TokenType::Integer))
+    }
+
+    fn string(&mut self) -> Option<Token<'input>> {
+        // Consume the `"` before the string
+        self.next();
+
+        // TODO: Add escape sequence support
+        while self.peek().map_or(false, |c| c != &'"') {
+            self.next();
+        }
+
+        // Consume the `"` after the string
+        self.next();
+
+        // We need to create a custom token here because we have
+        // to remove the double quotes in the front and in the back.
+        let range = (self.start_pos + 1)..(self.pos - 1);
+        Some(Token::new(
+            TokenType::String,
+            &self.input[range.clone()],
+            range,
+        ))
     }
 }
 
@@ -127,6 +222,64 @@ mod tests {
             token!(Integer, s, "1337"),
             token!(Integer, s, "1234_5678"),
             token!(Integer, s, "12321"),
+        ];
+        assert_eq!(expected, tokens);
+    }
+
+    #[test]
+    fn test_paren() {
+        let s = "(){}[]";
+        let tokens = lex_input(s);
+        let expected = vec![
+            token!(LeftParen, s, "("),
+            token!(RightParen, s, ")"),
+            token!(LeftBracket, s, "{"),
+            token!(RightBracket, s, "}"),
+            token!(LeftBrace, s, "["),
+            token!(RightBrace, s, "]"),
+        ];
+        assert_eq!(expected, tokens);
+    }
+
+    #[test]
+    fn test_some_tokens() {
+        let s = "!! ++ = != ** * * :: ., == != < <= >= > / - - # - / != ===";
+        let tokens: Vec<_> = lex_input(s).into_iter().map(|t| t.ty).collect();
+        let expected = vec![
+            TokenType::Bang,
+            TokenType::Bang,
+            TokenType::Plus,
+            TokenType::Plus,
+            TokenType::Equal,
+            TokenType::NotEqual,
+            TokenType::StarStar,
+            TokenType::Star,
+            TokenType::Star,
+            TokenType::Colon,
+            TokenType::Colon,
+            TokenType::Dot,
+            TokenType::Comma,
+            TokenType::EqualEqual,
+            TokenType::NotEqual,
+            TokenType::Less,
+            TokenType::LessEqual,
+            TokenType::GreaterEqual,
+            TokenType::Greater,
+            TokenType::Slash,
+            TokenType::Minus,
+            TokenType::Minus,
+        ];
+        assert_eq!(expected, tokens);
+    }
+
+    #[test]
+    fn test_strings() {
+        let s = " \"Hello world\" \"Does this work?\" \"I hope so\" ";
+        let tokens: Vec<_> = lex_input(s).into_iter().map(|t| (t.ty, t.repr)).collect();
+        let expected = vec![
+            (TokenType::String, "Hello world"),
+            (TokenType::String, "Does this work?"),
+            (TokenType::String, "I hope so"),
         ];
         assert_eq!(expected, tokens);
     }
