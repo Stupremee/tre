@@ -144,26 +144,37 @@ impl<'input> Lexer<'input> {
             self.next();
         }
 
+        if self.peek().map_or(false, |c| c == &'.') {
+            self.next();
+            while self.peek().map_or(false, |c| is_digit(c, 10)) {
+                self.next();
+            }
+            return Some(self.token(TokenType::Float));
+        }
+
         Some(self.token(TokenType::Integer))
     }
 
     fn string(&mut self) -> Option<Token<'input>> {
         // Consume the `"` before the string
-        self.next();
+        debug_assert_eq!(self.next().unwrap_or('\0'), '"');
 
-        // TODO: Add escape sequence support
         while self.peek().map_or(false, |c| c != &'"') {
-            self.next();
+            let c = self.next().unwrap_or('\0');
+            if c == '\\' && self.peek().unwrap_or(&'\0') == &'"' {
+                self.next();
+            }
         }
 
         // Consume the `"` after the string
-        self.next();
+        let has_quote = self.next().unwrap_or('\0') == '"';
 
         // We need to create a custom token here because we have
         // to remove the double quotes in the front and in the back.
-        let range = (self.start_pos + 1)..(self.pos - 1);
+        // If the string does not end with an quote, we have to include the last character.
+        let range = (self.start_pos + 1)..(self.pos - (has_quote as usize));
         Some(Token::new(
-            TokenType::String,
+            TokenType::String(has_quote),
             &self.input[range.clone()],
             range,
         ))
@@ -227,6 +238,19 @@ mod tests {
     }
 
     #[test]
+    fn test_float() {
+        let s = "13.10 12.34 0.9999 78.";
+        let tokens = lex_input(s);
+        let expected = vec![
+            token!(Float, s, "13.10"),
+            token!(Float, s, "12.34"),
+            token!(Float, s, "0.9999"),
+            token!(Float, s, "78."),
+        ];
+        assert_eq!(expected, tokens);
+    }
+
+    #[test]
     fn test_paren() {
         let s = "(){}[]";
         let tokens = lex_input(s);
@@ -274,12 +298,14 @@ mod tests {
 
     #[test]
     fn test_strings() {
-        let s = " \"Hello world\" \"Does this work?\" \"I hope so\" ";
+        let s = " \"Hello world\" \"Does this work?\" \"I hope so\" \"Here is a quote: \\\"\" \"oh no, unterminated ";
         let tokens: Vec<_> = lex_input(s).into_iter().map(|t| (t.ty, t.repr)).collect();
         let expected = vec![
-            (TokenType::String, "Hello world"),
-            (TokenType::String, "Does this work?"),
-            (TokenType::String, "I hope so"),
+            (TokenType::String(true), "Hello world"),
+            (TokenType::String(true), "Does this work?"),
+            (TokenType::String(true), "I hope so"),
+            (TokenType::String(true), "Here is a quote: \\\""),
+            (TokenType::String(false), "oh no, unterminated "),
         ];
         assert_eq!(expected, tokens);
     }
