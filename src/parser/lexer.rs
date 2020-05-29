@@ -181,11 +181,25 @@ impl<'input> Lexer<'input> {
     }
 }
 
-impl<'input> Iterator for Lexer<'input> {
+impl<'input> IntoIterator for Lexer<'input> {
+    type IntoIter = TokenStream<'input>;
     type Item = Token<'input>;
 
+    fn into_iter(self) -> Self::IntoIter {
+        TokenStream { lexer: self }
+    }
+}
+
+#[derive(Debug)]
+pub struct TokenStream<'lexer> {
+    lexer: Lexer<'lexer>,
+}
+
+impl<'lexer> Iterator for TokenStream<'lexer> {
+    type Item = Token<'lexer>;
+
     fn next(&mut self) -> Option<Self::Item> {
-        self.next_token()
+        self.lexer.next_token()
     }
 }
 
