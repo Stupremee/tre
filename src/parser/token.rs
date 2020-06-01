@@ -6,7 +6,7 @@ pub enum TokenType {
     Error,
 
     // Literals
-    String(bool),
+    String,
     Float,
     Integer,
     Bool,

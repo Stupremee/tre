@@ -157,7 +157,7 @@ impl<'input> Lexer<'input> {
 
     fn string(&mut self) -> Option<Token<'input>> {
         // Consume the `"` before the string
-        debug_assert_eq!(self.next().unwrap_or('\0'), '"');
+        assert_eq!(self.next().unwrap_or('\0'), '"');
 
         while self.peek().map_or(false, |c| c != &'"') {
             let c = self.next().unwrap_or('\0');
@@ -167,17 +167,11 @@ impl<'input> Lexer<'input> {
         }
 
         // Consume the `"` after the string
-        let has_quote = self.next().unwrap_or('\0') == '"';
+        if self.peek().unwrap_or(&'\0') == &'"' {
+            assert_eq!(self.next().unwrap_or('\0'), '"');
+        }
 
-        // We need to create a custom token here because we have
-        // to remove the double quotes in the front and in the back.
-        // If the string does not end with an quote, we have to include the last character.
-        let range = (self.start_pos + 1)..(self.pos - (has_quote as usize));
-        Some(Token::new(
-            TokenType::String(has_quote),
-            &self.input[range.clone()],
-            range,
-        ))
+        Some(self.token(TokenType::String))
     }
 }
 
@@ -312,20 +306,19 @@ mod tests {
 
     #[test]
     fn test_strings() {
-        let s = " \"Hello world\" \"Does this work?\" \"I hope so\" \"Here is a quote: \\\"\" \"oh no, unterminated ";
+        let s = r#" "Hello, world" "Does this work?" "I hope so" "Escaping: \"" "#;
         let tokens: Vec<_> = lex_input(s).into_iter().map(|t| (t.ty, t.repr)).collect();
         let expected = vec![
-            (TokenType::String(true), "Hello world"),
-            (TokenType::String(true), "Does this work?"),
-            (TokenType::String(true), "I hope so"),
-            (TokenType::String(true), "Here is a quote: \\\""),
-            (TokenType::String(false), "oh no, unterminated "),
+            (TokenType::String, r#""Hello, world""#),
+            (TokenType::String, r#""Does this work?""#),
+            (TokenType::String, r#""I hope so""#),
+            (TokenType::String, r#""Escaping: \"""#),
         ];
         assert_eq!(expected, tokens);
     }
 
     fn lex_input(input: &'_ str) -> Vec<Token<'_>> {
-        let lexer = Lexer::new(input);
+        let lexer = Lexer::new(input).into_iter();
         lexer.collect()
     }
 }
