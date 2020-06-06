@@ -3,8 +3,6 @@ use std::ops::Range;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TokenType {
-    Error,
-
     // Literals
     String,
     Float,

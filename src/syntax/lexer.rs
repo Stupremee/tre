@@ -167,11 +167,17 @@ impl<'input> Lexer<'input> {
         }
 
         // Consume the `"` after the string
-        if self.peek().unwrap_or(&'\0') == &'"' {
-            assert_eq!(self.next().unwrap_or('\0'), '"');
-        }
+        let has_quote = self.next().unwrap_or('\0') == '"';
 
-        Some(self.token(TokenType::String))
+        // We need to create a custom token here because we have
+        // to remove the double quotes in the front and in the back.
+        // If the string does not end with an quote, we have to include the last character.
+        let range = (self.start_pos + 1)..(self.pos - (has_quote as usize));
+        Some(Token::new(
+            TokenType::String,
+            &self.input[range.clone()],
+            range,
+        ))
     }
 }
 
