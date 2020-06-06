@@ -1,16 +1,6 @@
 use super::token::{Token, TokenType};
+use crate::Span;
 use std::{iter::Peekable, str::Chars};
-
-const KEYWORDS: [(&'static str, TokenType); 8] = [
-    ("def", TokenType::Def),
-    ("let", TokenType::Let),
-    ("loop", TokenType::Loop),
-    ("while", TokenType::While),
-    ("if", TokenType::If),
-    ("else", TokenType::Else),
-    ("break", TokenType::Break),
-    ("continue", TokenType::Continue),
-];
 
 #[derive(Debug, Clone)]
 pub struct Lexer<'input> {
@@ -46,15 +36,20 @@ impl<'input> Lexer<'input> {
     }
 
     #[inline]
-    fn token(&self, ty: TokenType) -> Token<'input> {
-        let range = self.start_pos..self.pos;
-        Token::new(ty, &self.input[range.clone()], range)
+    fn token(&self, ty: TokenType) -> Token {
+        let span = Span::from(self.start_pos..self.pos);
+        span.span(ty)
+    }
+
+    #[inline]
+    fn current_slice(&self) -> &'input str {
+        &self.input[self.start_pos..self.pos]
     }
 }
 
 // Lexing methods
 impl<'input> Lexer<'input> {
-    pub fn next_token(&mut self) -> Option<Token<'input>> {
+    pub fn next_token(&mut self) -> Option<Token> {
         self.start_pos = self.pos;
         let kind = match self.next()? {
             '!' => match self.peek()? {
@@ -114,7 +109,7 @@ impl<'input> Lexer<'input> {
         Some(self.token(kind))
     }
 
-    fn identifier(&mut self) -> Option<Token<'input>> {
+    fn identifier(&mut self) -> Option<Token> {
         while self.peek().map_or(false, |c| is_identifier(&c)) {
             self.next();
         }
@@ -122,15 +117,9 @@ impl<'input> Lexer<'input> {
         self.keyword_or_ident()
     }
 
-    fn keyword_or_ident(&mut self) -> Option<Token<'input>> {
+    fn keyword_or_ident(&mut self) -> Option<Token> {
         let mut token = self.token(TokenType::Identifier);
-        token.ty = KEYWORDS
-            .iter()
-            .filter(|t| t.0 == token.repr)
-            .map(|t| t.1)
-            .next()
-            .unwrap_or(TokenType::Identifier);
-        token.ty = match token.repr {
+        token.0 = match self.current_slice() {
             "def" => TokenType::Def,
             "let" => TokenType::Let,
             "loop" => TokenType::Loop,
@@ -145,7 +134,7 @@ impl<'input> Lexer<'input> {
         Some(token)
     }
 
-    fn number(&mut self) -> Option<Token<'input>> {
+    fn number(&mut self) -> Option<Token> {
         while self.peek().map_or(false, |c| is_digit(c, 10)) {
             self.next();
         }
@@ -161,7 +150,7 @@ impl<'input> Lexer<'input> {
         Some(self.token(TokenType::Integer))
     }
 
-    fn string(&mut self) -> Option<Token<'input>> {
+    fn string(&mut self) -> Option<Token> {
         while self.peek().map_or(false, |c| c != &'"') {
             let c = self.next().unwrap_or('\0');
             if c == '\\' && self.peek().unwrap_or(&'\0') == &'"' {
@@ -176,17 +165,14 @@ impl<'input> Lexer<'input> {
         // to remove the double quotes in the front and in the back.
         // If the string does not end with an quote, we have to include the last character.
         let range = (self.start_pos + 1)..(self.pos - (has_quote as usize));
-        Some(Token::new(
-            TokenType::String,
-            &self.input[range.clone()],
-            range,
-        ))
+        let range = Span::from(range);
+        Some(range.span(TokenType::String))
     }
 }
 
 impl<'input> IntoIterator for Lexer<'input> {
     type IntoIter = TokenStream<'input>;
-    type Item = Token<'input>;
+    type Item = Token;
 
     fn into_iter(self) -> Self::IntoIter {
         TokenStream { lexer: self }
@@ -199,7 +185,7 @@ pub struct TokenStream<'lexer> {
 }
 
 impl<'lexer> Iterator for TokenStream<'lexer> {
-    type Item = Token<'lexer>;
+    type Item = Token;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.lexer.next_token()
@@ -226,7 +212,8 @@ mod tests {
             let r = $r;
             let idx = $s.find($r).expect("couldn't find pattern in str");
             let range = idx..(idx + r.len());
-            Token::new(TokenType::$t, &$s[range.clone()], range)
+            let range = Span::from(range);
+            range.span(TokenType::$t)
         }};
     }
 
@@ -285,7 +272,7 @@ mod tests {
     #[test]
     fn test_some_tokens() {
         let s = "!! ++ = != ** * * :: ., == != < <= >= > / - - # - / != ===";
-        let tokens: Vec<_> = lex_input(s).into_iter().map(|t| t.ty).collect();
+        let tokens: Vec<_> = lex_input(s).into_iter().map(|t| t.into_inner()).collect();
         let expected = vec![
             TokenType::Bang,
             TokenType::Bang,
@@ -316,7 +303,10 @@ mod tests {
     #[test]
     fn test_strings() {
         let s = r#" "Hello, world" "Does this work?" "I hope so" "Escaping: \"" "#;
-        let tokens: Vec<_> = lex_input(s).into_iter().map(|t| (t.ty, t.repr)).collect();
+        let tokens: Vec<_> = lex_input(s)
+            .into_iter()
+            .map(|t| (t.0, t.span().index(s)))
+            .collect();
         let expected = vec![
             (TokenType::String, r#"Hello, world"#),
             (TokenType::String, r#"Does this work?"#),
@@ -326,7 +316,7 @@ mod tests {
         assert_eq!(expected, tokens);
     }
 
-    fn lex_input(input: &'_ str) -> Vec<Token<'_>> {
+    fn lex_input(input: &'_ str) -> Vec<Token> {
         let lexer = Lexer::new(input).into_iter();
         lexer.collect()
     }
