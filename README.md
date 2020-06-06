@@ -14,6 +14,12 @@ A small programming language.
 1 * 1
 1 / 1
 1 ** 1
+
+# There's also &&, ||, and ^
+# logic operations
+!true
+
+# Comparisons == != < > <= >=
 ```
 
 ### Variables
@@ -58,9 +64,11 @@ if (some_bool) {
 ```
 loop {
     # an endless loop
+    continue;
 }
 
 while (some_bool) {
     # a normal while loop
+    break;
 }
 ```

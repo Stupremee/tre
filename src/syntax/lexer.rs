@@ -1,38 +1,16 @@
 use super::token::{Token, TokenType};
 use std::{iter::Peekable, str::Chars};
 
-const KEYWORDS: [(&'static str, TokenType); 10] = [
+const KEYWORDS: [(&'static str, TokenType); 8] = [
     ("def", TokenType::Def),
     ("let", TokenType::Let),
     ("loop", TokenType::Loop),
     ("while", TokenType::While),
-    ("for", TokenType::For),
     ("if", TokenType::If),
     ("else", TokenType::Else),
-    ("or", TokenType::Or),
-    ("and", TokenType::And),
     ("break", TokenType::Break),
+    ("continue", TokenType::Continue),
 ];
-
-macro_rules! match_char {
-    ($self:ident, $ty:ident) => {{
-        $self.next();
-        Some($self.token(TokenType::$ty))
-    }};
-}
-
-macro_rules! match_two_chars {
-    ($self:ident, $ty:ident, $se:expr, $ty2:ident) => {{
-        $self.next();
-        match $self.peek() {
-            Some($se) => {
-                $self.next();
-                Some($self.token(TokenType::$ty2))
-            }
-            Some(_) | None => Some($self.token(TokenType::$ty)),
-        }
-    }};
-}
 
 #[derive(Debug, Clone)]
 pub struct Lexer<'input> {
@@ -78,44 +56,62 @@ impl<'input> Lexer<'input> {
 impl<'input> Lexer<'input> {
     pub fn next_token(&mut self) -> Option<Token<'input>> {
         self.start_pos = self.pos;
-        let cur = self.peek()?;
-
-        match cur {
-            '(' => match_char!(self, LeftParen),
-            ')' => match_char!(self, RightParen),
-            '{' => match_char!(self, LeftBracket),
-            '}' => match_char!(self, RightBracket),
-            '[' => match_char!(self, LeftBrace),
-            ']' => match_char!(self, RightBrace),
-
-            '!' => match_two_chars!(self, Bang, '=', NotEqual),
-            '+' => match_char!(self, Plus),
-            '-' => match_char!(self, Minus),
-            '*' => match_two_chars!(self, Star, '*', StarStar),
-            '/' => match_char!(self, Slash),
-            ':' => match_char!(self, Colon),
-            '.' => match_char!(self, Dot),
-            ',' => match_char!(self, Comma),
-
-            '=' => match_two_chars!(self, Equal, '=', EqualEqual),
-            '>' => match_two_chars!(self, Greater, '=', GreaterEqual),
-            '<' => match_two_chars!(self, Less, '=', LessEqual),
-
-            '#' => {
-                while self.peek().map_or(false, |c| c != &'\n') {
-                    self.next();
+        let kind = match self.next()? {
+            '!' => match self.peek()? {
+                '=' => {
+                    assert_eq!(self.next().unwrap_or('\0'), '=');
+                    TokenType::NotEqual
                 }
-                self.next_token()
-            }
-            '"' => self.string(),
-            '0'..='9' => self.number(),
-            'A'..='Z' | 'a'..='z' | '_' => self.identifier(),
-            ' ' | '\t' | '\n' | '\r' => {
-                self.next();
-                self.next_token()
-            }
-            _ => None,
-        }
+                _ => TokenType::Bang,
+            },
+            '+' => TokenType::Plus,
+            '-' => TokenType::Minus,
+            '*' => match self.peek()? {
+                '*' => {
+                    assert_eq!(self.next().unwrap_or('\0'), '*');
+                    TokenType::StarStar
+                }
+                _ => TokenType::Star,
+            },
+            '/' => TokenType::Slash,
+            ':' => TokenType::Colon,
+            ',' => TokenType::Comma,
+            '.' => TokenType::Dot,
+            '(' => TokenType::LeftParen,
+            ')' => TokenType::RightParen,
+            '{' => TokenType::LeftCurly,
+            '}' => TokenType::RightCurly,
+
+            '=' => match self.peek()? {
+                '=' => {
+                    assert_eq!(self.next().unwrap_or('\0'), '=');
+                    TokenType::EqualEqual
+                }
+                _ => TokenType::Equal,
+            },
+            '<' => match self.peek()? {
+                '=' => {
+                    assert_eq!(self.next().unwrap_or('\0'), '=');
+                    TokenType::LessEqual
+                }
+                _ => TokenType::Less,
+            },
+            '>' => match self.peek()? {
+                '=' => {
+                    assert_eq!(self.next().unwrap_or('\0'), '=');
+                    TokenType::GreaterEqual
+                }
+                _ => TokenType::Greater,
+            },
+
+            '"' => return self.string(),
+            c if is_identifier(&c) => return self.identifier(),
+            c if c.is_digit(10) => return self.number(),
+            c if c.is_whitespace() => return self.next_token(),
+            _ => return None,
+        };
+
+        Some(self.token(kind))
     }
 
     fn identifier(&mut self) -> Option<Token<'input>> {
@@ -134,12 +130,22 @@ impl<'input> Lexer<'input> {
             .map(|t| t.1)
             .next()
             .unwrap_or(TokenType::Identifier);
+        token.ty = match token.repr {
+            "def" => TokenType::Def,
+            "let" => TokenType::Let,
+            "loop" => TokenType::Loop,
+            "while" => TokenType::While,
+            "if" => TokenType::If,
+            "else" => TokenType::Else,
+            "break" => TokenType::Break,
+            "continue" => TokenType::Continue,
+            "true" | "false" => TokenType::Bool,
+            _ => TokenType::Identifier,
+        };
         Some(token)
     }
 
     fn number(&mut self) -> Option<Token<'input>> {
-        // TODO: Add floating numbers
-        // TODO: Add more number bases
         while self.peek().map_or(false, |c| is_digit(c, 10)) {
             self.next();
         }
@@ -156,9 +162,6 @@ impl<'input> Lexer<'input> {
     }
 
     fn string(&mut self) -> Option<Token<'input>> {
-        // Consume the `"` before the string
-        assert_eq!(self.next().unwrap_or('\0'), '"');
-
         while self.peek().map_or(false, |c| c != &'"') {
             let c = self.next().unwrap_or('\0');
             if c == '\\' && self.peek().unwrap_or(&'\0') == &'"' {
@@ -229,12 +232,14 @@ mod tests {
 
     #[test]
     fn test_identifier() {
-        let s = "_ABC_DEF some_thing\nmore_IdeNt";
+        let s = "_ABC_DEF some_thing\nmore_IdeNt true false";
         let tokens = lex_input(s);
         let expected = vec![
             token!(Identifier, s, "_ABC_DEF"),
             token!(Identifier, s, "some_thing"),
             token!(Identifier, s, "more_IdeNt"),
+            token!(Bool, s, "true"),
+            token!(Bool, s, "false"),
         ];
         assert_eq!(expected, tokens);
     }
@@ -266,15 +271,13 @@ mod tests {
 
     #[test]
     fn test_paren() {
-        let s = "(){}[]";
+        let s = "(){}";
         let tokens = lex_input(s);
         let expected = vec![
             token!(LeftParen, s, "("),
             token!(RightParen, s, ")"),
-            token!(LeftBracket, s, "{"),
-            token!(RightBracket, s, "}"),
-            token!(LeftBrace, s, "["),
-            token!(RightBrace, s, "]"),
+            token!(LeftCurly, s, "{"),
+            token!(RightCurly, s, "}"),
         ];
         assert_eq!(expected, tokens);
     }
@@ -315,10 +318,10 @@ mod tests {
         let s = r#" "Hello, world" "Does this work?" "I hope so" "Escaping: \"" "#;
         let tokens: Vec<_> = lex_input(s).into_iter().map(|t| (t.ty, t.repr)).collect();
         let expected = vec![
-            (TokenType::String, r#""Hello, world""#),
-            (TokenType::String, r#""Does this work?""#),
-            (TokenType::String, r#""I hope so""#),
-            (TokenType::String, r#""Escaping: \"""#),
+            (TokenType::String, r#"Hello, world"#),
+            (TokenType::String, r#"Does this work?"#),
+            (TokenType::String, r#"I hope so"#),
+            (TokenType::String, r#"Escaping: \""#),
         ];
         assert_eq!(expected, tokens);
     }

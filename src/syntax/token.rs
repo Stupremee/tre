@@ -17,12 +17,10 @@ pub enum TokenType {
     Let,
     Loop,
     While,
-    For,
     If,
     Else,
-    Or,
-    And,
     Break,
+    Continue,
 
     // Some other chars
     Bang,
@@ -37,10 +35,8 @@ pub enum TokenType {
 
     LeftParen,
     RightParen,
-    LeftBracket,
-    RightBracket,
-    LeftBrace,
-    RightBrace,
+    LeftCurly,
+    RightCurly,
 
     Equal,
     EqualEqual,
