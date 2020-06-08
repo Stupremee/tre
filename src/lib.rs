@@ -3,10 +3,13 @@
 
 pub mod syntax;
 
-use codespan::ByteIndex;
+use codespan::{ByteIndex, FileId};
+use codespan_reporting::diagnostic::Diagnostic;
 use std::ops::{Deref, DerefMut, Range};
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub type Result<T> = std::result::Result<T, Diagnostic<FileId>>;
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Default)]
 pub struct Span(codespan::Span);
 
 impl Span {
@@ -37,6 +40,12 @@ impl Into<codespan::Span> for Span {
     }
 }
 
+impl Into<Range<usize>> for Span {
+    fn into(self) -> Range<usize> {
+        Range::from(self.0)
+    }
+}
+
 impl From<codespan::Span> for Span {
     fn from(span: codespan::Span) -> Span {
         Span(span)
@@ -50,13 +59,18 @@ impl From<Range<usize>> for Span {
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Spanned<T>(T, Span);
 
 impl<T> Spanned<T> {
     #[inline]
     pub fn into_inner(self) -> T {
         self.0
+    }
+
+    #[inline]
+    pub fn data(&self) -> &T {
+        &self.0
     }
 
     #[inline]
@@ -83,5 +97,18 @@ impl<T> DerefMut for Spanned<T> {
     #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
+    }
+}
+
+pub mod diagnostic {
+    pub use codespan::{FileId, Files};
+    pub use codespan_reporting::diagnostic::*;
+
+    pub fn emit(files: &Files<&str>, diagnostic: &Diagnostic<FileId>) {
+        use codespan_reporting::term::{self, termcolor};
+
+        let mut stdout = termcolor::StandardStream::stdout(termcolor::ColorChoice::Auto);
+        let config = term::Config::default();
+        term::emit(&mut stdout, &config, files, diagnostic).expect("failed to emit diagnostics");
     }
 }

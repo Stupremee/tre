@@ -1,6 +1,9 @@
 use super::token::{Token, TokenType};
 use crate::Span;
-use std::{iter::Peekable, str::Chars};
+use std::{
+    iter::{FusedIterator, Peekable},
+    str::Chars,
+};
 
 #[derive(Debug, Clone)]
 pub struct Lexer<'input> {
@@ -135,13 +138,13 @@ impl<'input> Lexer<'input> {
     }
 
     fn number(&mut self) -> Option<Token> {
-        while self.peek().map_or(false, |c| is_digit(c, 10)) {
+        while self.peek().map_or(false, |c| c.is_digit(10)) {
             self.next();
         }
 
         if self.peek().map_or(false, |c| c == &'.') {
             self.next();
-            while self.peek().map_or(false, |c| is_digit(c, 10)) {
+            while self.peek().map_or(false, |c| c.is_digit(10)) {
                 self.next();
             }
             return Some(self.token(TokenType::Float));
@@ -192,9 +195,7 @@ impl<'lexer> Iterator for TokenStream<'lexer> {
     }
 }
 
-fn is_digit(c: &char, radix: u32) -> bool {
-    c.is_digit(radix) || c == &'_'
-}
+impl<'lexer> FusedIterator for TokenStream<'lexer> {}
 
 fn is_identifier(c: &char) -> bool {
     match c {
