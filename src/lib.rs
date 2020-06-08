@@ -29,6 +29,11 @@ impl Span {
     }
 
     #[inline]
+    pub fn end(self) -> Self {
+        Self(codespan::Span::new(self.0.end(), self.0.end()))
+    }
+
+    #[inline]
     pub fn index<'s>(&self, slice: &'s str) -> &'s str {
         &slice[Range::<usize>::from(self.0)]
     }
@@ -101,10 +106,13 @@ impl<T> DerefMut for Spanned<T> {
 }
 
 pub mod diagnostic {
-    pub use codespan::{FileId, Files};
-    pub use codespan_reporting::diagnostic::*;
+    pub use codespan_reporting::diagnostic::{LabelStyle, Severity};
 
-    pub fn emit(files: &Files<&str>, diagnostic: &Diagnostic<FileId>) {
+    pub type Files<'s> = codespan::Files<&'s str>;
+    pub type Diagnostic = codespan_reporting::diagnostic::Diagnostic<codespan::FileId>;
+    pub type Label = codespan_reporting::diagnostic::Label<codespan::FileId>;
+
+    pub fn emit(files: &Files<'_>, diagnostic: &Diagnostic) {
         use codespan_reporting::term::{self, termcolor};
 
         let mut stdout = termcolor::StandardStream::stdout(termcolor::ColorChoice::Auto);

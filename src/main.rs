@@ -3,13 +3,19 @@
 
 use tre::diagnostic::*;
 use tre::syntax::Parser;
+use tre::syntax::Token;
+use tre::Result;
 
 fn main() {
     let mut files = Files::new();
-    let id = files.add("input", "");
-    let parser = Parser::new(&files, id);
-    match parser {
-        Ok(_) => {}
+    match do_it(&mut files) {
+        Ok(t) => println!("got token: {:?}", t),
         Err(d) => emit(&files, &d),
     }
+}
+
+fn do_it(files: &mut Files<'_>) -> Result<Token> {
+    let id = files.add("input", "def");
+    let mut parser = Parser::new(&files, id)?;
+    parser.next_item()
 }
