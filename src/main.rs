@@ -15,7 +15,8 @@ fn main() {
 }
 
 fn do_it(files: &mut Files<'_>) -> Result<Token> {
-    let id = files.add("input", "def");
+    let id = files.add("input", " 123 df");
     let mut parser = Parser::new(&files, id)?;
+    parser.next_int()?;
     parser.next_item()
 }

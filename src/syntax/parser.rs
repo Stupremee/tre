@@ -1,4 +1,5 @@
 use super::{
+    ast,
     lexer::{Lexer, TokenStream},
     token::{Token, TokenType},
 };
@@ -41,35 +42,11 @@ impl<'input> Parser<'input> {
     }
 
     fn next(&mut self) -> Result<Token> {
-        let token = self.tokens.next().ok_or_else(|| {
-            new_error(
-                "unexpected end of input",
-                Label::primary(self.file, self.span),
-            )
-        });
-        self.span = token.as_ref().map(|t| t.span()).unwrap_or(self.span);
-        token
-    }
-
-    fn peek(&mut self) -> Option<&Token> {
-        let token = self.tokens.peek();
-        // just to be sure set the span here
-        self.span = token.map(|t| t.span()).unwrap_or(self.span);
-        token
-    }
-
-    fn eat(&mut self, ty: TokenType) -> Result<Token> {
-        let actual = self.peek().cloned();
-        match actual {
-            Some(ref token) if token.data() == &ty => self.next(),
-            Some(ref token) => Err(new_error(
-                "unexpected token",
-                Label::primary(self.file, self.span).with_message(format!(
-                    "expected '{:?}' but got '{:?}'",
-                    ty,
-                    token.data()
-                )),
-            )),
+        match self.tokens.next() {
+            Some(token) => {
+                self.span = token.span();
+                Ok(token)
+            }
             None => Err(new_error(
                 "unexpected end of input",
                 Label::primary(self.file, self.span),
@@ -77,7 +54,69 @@ impl<'input> Parser<'input> {
         }
     }
 
+    fn peek(&mut self) -> Result<&Token> {
+        match self.tokens.peek() {
+            Some(token) => {
+                self.span = token.span();
+                Ok(token)
+            }
+            None => Err(new_error(
+                "unexpected end of input",
+                Label::primary(self.file, self.span),
+            )),
+        }
+    }
+
+    fn next_is(&mut self, ty: TokenType) -> bool {
+        self.peek().map_or(false, |t| t.data() == &ty)
+    }
+
+    fn eat(&mut self, ty: TokenType) -> Result<Token> {
+        let actual = self.peek()?.clone();
+        match actual {
+            ref token if token.data() == &ty => self.next(),
+            ref token => Err(new_error(
+                "unexpected token",
+                Label::primary(self.file, self.span).with_message(format!(
+                    "expected '{:?}' but got '{:?}'",
+                    ty,
+                    token.data()
+                )),
+            )),
+        }
+    }
+
+    fn binding_power(&self, t: TokenType, prefix: bool) -> Option<(u8, u8)> {
+        let power = match t {
+            TokenType::Identifier | TokenType::Integer => (99u8, 100u8),
+            TokenType::LeftParen => (99, 0),
+            TokenType::Plus | TokenType::Minus if prefix => (99, 9),
+            TokenType::Plus | TokenType::Minus => (5, 6),
+            TokenType::Star | TokenType::Slash => (7, 8),
+            TokenType::StarStar => (9, 10),
+            TokenType::Bang => (11, 100),
+            _ => return None,
+        };
+        Some(power)
+    }
+
+    fn next_expr(&mut self, op: Option<ast::BinaryOperation>) -> Result<ast::Expr> {
+        let mut primary = self.next_primary_expr()?;
+        todo!()
+    }
+
+    fn next_primary_expr(&mut self) -> Result<ast::Expr> {
+        match self.peek() {}
+    }
+
     pub fn next_item(&mut self) -> Result<Token> {
-        self.eat(TokenType::Def)
+        if self.next_is(TokenType::Def) {
+            self.next()
+        } else {
+            Err(new_error(
+                "unexpected token",
+                Label::primary(self.file, self.span).with_message(format!("expected 'def'",)),
+            ))
+        }
     }
 }
