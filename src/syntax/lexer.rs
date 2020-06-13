@@ -64,13 +64,7 @@ impl<'input> Lexer<'input> {
             },
             '+' => TokenType::Plus,
             '-' => TokenType::Minus,
-            '*' => match self.peek()? {
-                '*' => {
-                    assert_eq!(self.next().unwrap_or('\0'), '*');
-                    TokenType::StarStar
-                }
-                _ => TokenType::Star,
-            },
+            '*' => TokenType::Star,
             '/' => TokenType::Slash,
             ':' => TokenType::Colon,
             ',' => TokenType::Comma,

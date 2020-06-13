@@ -1,4 +1,4 @@
-use crate::Spanned;
+use crate::{syntax::TokenType, Spanned};
 use lasso::Spur;
 
 pub type Identifier = Spanned<Spur>;
@@ -56,7 +56,9 @@ pub type Expr = Spanned<ExprKind>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExprKind {
-    Int(u64),
+    Int(i64),
+    String(String),
+    Bool(bool),
     // TODO: Add support for floats
     // Float(u64),
     Binary {
@@ -65,18 +67,37 @@ pub enum ExprKind {
         right: Box<Expr>,
     },
     Unary {
-        op: BinaryOperation,
+        op: UnaryOperation,
         expr: Box<Expr>,
     },
     Call {
         name: Identifier,
         args: Vec<Expr>,
     },
+    Grouping(Box<Expr>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UnaryOperation {
+    Not,
     Negate,
+}
+
+impl From<TokenType> for UnaryOperation {
+    fn from(ty: TokenType) -> Self {
+        UnaryOperation::from(&ty)
+    }
+}
+
+impl From<&TokenType> for UnaryOperation {
+    fn from(ty: &TokenType) -> Self {
+        match ty {
+            TokenType::Bang => UnaryOperation::Not,
+            TokenType::Minus => UnaryOperation::Negate,
+            // TODO: Convert to TryFrom impl
+            _ => panic!("failed to convert tokentype into binary operation."),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -85,7 +106,7 @@ pub enum BinaryOperation {
     Minus,
     Mul,
     Div,
-    Pow,
+    NotEqual,
     EqualEqual,
     Less,
     LessEqual,
@@ -93,68 +114,27 @@ pub enum BinaryOperation {
     GreaterEqual,
 }
 
-// use crate::Spanned;
-// use lasso::Spur;
+impl From<TokenType> for BinaryOperation {
+    fn from(ty: TokenType) -> Self {
+        BinaryOperation::from(&ty)
+    }
+}
 
-// pub type Identifier = Spanned<Spur>;
-
-// #[derive(Debug, PartialEq, Clone)]
-// pub enum Type {
-//     U64,
-//     F64,
-//     String,
-//     Bool,
-//     Custom(Identifier),
-// }
-
-// #[derive(Debug, PartialEq, Clone)]
-// pub enum UnaryOperation {
-//     Negate,
-// }
-
-// #[derive(Debug, PartialEq, Clone)]
-// pub enum BinaryOperation {
-//     Plus,
-//     Minus,
-//     Mul,
-//     Div,
-//     Pow,
-//     EqualEqual,
-//     Less,
-//     LessEqual,
-//     Greater,
-//     GreaterEqual,
-// }
-
-// #[derive(Debug, PartialEq, Clone)]
-// pub enum Expr {
-//     Int(u64),
-//     Float(f64),
-//     Binary {
-//         left: Box<Spanned<Expr>>,
-//         op: BinaryOperation,
-//         right: Box<Spanned<Expr>>,
-//     },
-//     Unary {
-//         op: UnaryOperation,
-//         expr: Box<Spanned<Expr>>,
-//     },
-//     Call {
-//         name: Spanned<Identifier>,
-//         args: Vec<Spanned<Expr>>,
-//     },
-// }
-
-// #[derive(Debug, PartialEq, Clone)]
-// pub enum Stmt {
-//     Let {
-//         name: Identifier,
-//         ty: Option<Spanned<Type>>,
-//         val: Spanned<Expr>,
-//     },
-//     // TODO: Add "else if" support
-//     If {
-//         cond: Spanned<Expr>,
-//         block: Spanned<Block>
-//     }
-// }
+impl From<&TokenType> for BinaryOperation {
+    fn from(ty: &TokenType) -> Self {
+        match ty {
+            TokenType::Plus => BinaryOperation::Plus,
+            TokenType::Minus => BinaryOperation::Minus,
+            TokenType::Star => BinaryOperation::Mul,
+            TokenType::Slash => BinaryOperation::Div,
+            TokenType::NotEqual => BinaryOperation::NotEqual,
+            TokenType::EqualEqual => BinaryOperation::EqualEqual,
+            TokenType::Less => BinaryOperation::Less,
+            TokenType::LessEqual => BinaryOperation::LessEqual,
+            TokenType::Greater => BinaryOperation::Greater,
+            TokenType::GreaterEqual => BinaryOperation::GreaterEqual,
+            // TODO: Convert to TryFrom impl
+            _ => panic!("failed to convert tokentype into binary operation."),
+        }
+    }
+}

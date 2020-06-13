@@ -27,7 +27,6 @@ pub enum TokenType {
     Minus,
     Star,
     Slash,
-    StarStar,
     Colon,
     Comma,
     Dot,
