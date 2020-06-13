@@ -159,9 +159,6 @@ impl<'input> Parser<'input> {
     }
 
     fn next_primary(&mut self) -> Result<ast::Expr> {
-        // Int(u64),
-        // String(String),
-        // Bool(bool),
         match self.next() {
             Some(token) => match token.data() {
                 TokenType::String => self.next_string(token),
