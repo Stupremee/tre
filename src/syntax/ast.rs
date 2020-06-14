@@ -1,10 +1,9 @@
 use crate::{syntax::TokenType, Spanned};
 use lasso::Spur;
+use std::fmt;
 
 pub type Identifier = Spanned<Spur>;
-
 pub type Block = Vec<Expr>;
-
 pub type Type = Spanned<TypeKind>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -77,10 +76,33 @@ pub enum ExprKind {
     Grouping(Box<Expr>),
 }
 
+impl fmt::Display for ExprKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ExprKind::Int(val) => write!(f, "{}", val),
+            ExprKind::String(s) => write!(f, r#""{}""#, s),
+            ExprKind::Bool(b) => write!(f, "{}", b),
+            ExprKind::Binary { left, op, right } => write!(f, "({} {} {})", op, left, right),
+            ExprKind::Unary { op, expr } => write!(f, "{}{}", op, expr),
+            ExprKind::Call { name: _, args: _ } => unimplemented!(),
+            ExprKind::Grouping(expr) => write!(f, "({})", expr),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UnaryOperation {
     Not,
     Negate,
+}
+
+impl fmt::Display for UnaryOperation {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            UnaryOperation::Not => write!(f, "!"),
+            UnaryOperation::Negate => write!(f, "-"),
+        }
+    }
 }
 
 impl From<TokenType> for UnaryOperation {
@@ -112,6 +134,23 @@ pub enum BinaryOperation {
     LessEqual,
     Greater,
     GreaterEqual,
+}
+
+impl fmt::Display for BinaryOperation {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            BinaryOperation::Plus => write!(f, "+"),
+            BinaryOperation::Minus => write!(f, "-"),
+            BinaryOperation::Mul => write!(f, "*"),
+            BinaryOperation::Div => write!(f, "/"),
+            BinaryOperation::NotEqual => write!(f, "!="),
+            BinaryOperation::EqualEqual => write!(f, "=="),
+            BinaryOperation::Less => write!(f, "<"),
+            BinaryOperation::LessEqual => write!(f, "<="),
+            BinaryOperation::Greater => write!(f, ">"),
+            BinaryOperation::GreaterEqual => write!(f, ">="),
+        }
+    }
 }
 
 impl From<TokenType> for BinaryOperation {

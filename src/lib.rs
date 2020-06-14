@@ -5,7 +5,10 @@ pub mod syntax;
 
 use codespan::{ByteIndex, FileId};
 use codespan_reporting::diagnostic::Diagnostic;
-use std::ops::{Deref, DerefMut, Range};
+use std::{
+    fmt,
+    ops::{Deref, DerefMut, Range},
+};
 
 pub type Result<T> = std::result::Result<T, Diagnostic<FileId>>;
 
@@ -86,6 +89,16 @@ impl<T> Spanned<T> {
     #[inline]
     pub fn span_ref(&self) -> &Span {
         &self.1
+    }
+}
+
+impl<T> fmt::Display for Spanned<T>
+where
+    T: fmt::Display,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // probably we should print the position somehow
+        write!(f, "{}", self.0)
     }
 }
 
