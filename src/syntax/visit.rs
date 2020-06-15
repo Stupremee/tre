@@ -1,6 +1,6 @@
 use super::ast::{
-    BinaryOperation, DefArgument, Expr, ExprKind, Identifier, Item, ItemKind, Literal,
-    UnaryOperation,
+    BinaryOperation, Block, DefArgument, Expr, ExprKind, Identifier, Item, ItemKind, Literal, Stmt,
+    StmtKind, Type, UnaryOperation,
 };
 
 pub trait ItemVisitor {
@@ -46,4 +46,50 @@ pub trait ExprVisitor {
     ) -> Self::Output;
 
     fn visit_unary(&mut self, expr: &Expr, op: &UnaryOperation, right: &Expr) -> Self::Output;
+}
+
+pub trait StmtVisitor: ExprVisitor
+where
+    <Self as ExprVisitor>::Output: Into<<Self as StmtVisitor>::Output>,
+{
+    type Output;
+
+    fn visit_stmt(&mut self, stmt: &Stmt) -> <Self as StmtVisitor>::Output {
+        match stmt.data() {
+            StmtKind::Let { name, ty, val } => self.visit_let(stmt, name, ty, val),
+            StmtKind::If {
+                cond,
+                then,
+                otherwise,
+            } => self.visit_if(stmt, cond, then, otherwise),
+            StmtKind::While { cond, block } => self.visit_while(stmt, cond, block),
+            StmtKind::Loop(block) => self.visit_loop(stmt, block),
+            StmtKind::Expr(expr) => self.visit_expr(expr).into(),
+        }
+    }
+
+    fn visit_loop(&mut self, stmt: &Stmt, block: &Block) -> <Self as StmtVisitor>::Output;
+
+    fn visit_while(
+        &mut self,
+        stmt: &Stmt,
+        cond: &Expr,
+        block: &Block,
+    ) -> <Self as StmtVisitor>::Output;
+
+    fn visit_if(
+        &mut self,
+        stmt: &Stmt,
+        cond: &Expr,
+        then: &Block,
+        otherwise: &Block,
+    ) -> <Self as StmtVisitor>::Output;
+
+    fn visit_let(
+        &mut self,
+        stmt: &Stmt,
+        name: &Identifier,
+        ty: &Type,
+        val: &Expr,
+    ) -> <Self as StmtVisitor>::Output;
 }

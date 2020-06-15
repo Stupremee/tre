@@ -3,7 +3,7 @@ use lasso::Spur;
 use std::fmt;
 
 pub type Identifier = Spanned<Spur>;
-pub type Block = Vec<Expr>;
+pub type Block = Vec<Stmt>;
 pub type Type = Spanned<TypeKind>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -37,18 +37,19 @@ pub enum StmtKind {
     Let {
         name: Identifier,
         ty: Type,
+        val: Expr,
     },
     If {
-        cond: Box<Expr>,
+        cond: Expr,
         then: Block,
         otherwise: Block,
     },
     While {
-        cond: Box<Expr>,
+        cond: Expr,
         block: Block,
     },
     Loop(Block),
-    Expr(Box<Expr>),
+    Expr(Expr),
 }
 
 pub type Expr = Spanned<ExprKind>;
