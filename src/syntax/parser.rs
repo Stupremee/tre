@@ -246,7 +246,9 @@ impl<'input> Parser<'input> {
     fn next_string(&mut self, token: Token) -> Result<ast::Expr> {
         let src = self.files.source(self.file);
         let string = token.span_ref().index(src).to_string();
-        Ok(token.span().span(ast::ExprKind::String(string)))
+        Ok(token
+            .span()
+            .span(ast::ExprKind::Literal(ast::Literal::String(string))))
     }
 
     fn next_integer(&mut self, token: Token) -> Result<ast::Expr> {
@@ -254,15 +256,21 @@ impl<'input> Parser<'input> {
         let num = token.span_ref().index(src);
         let num = lexical::parse::<i64, _>(num)
             .map_err(|err| self.make_diagnostic(SyntaxError::InvalidInteger(err)))?;
-        Ok(token.span_ref().span(ast::ExprKind::Int(num)))
+        Ok(token
+            .span_ref()
+            .span(ast::ExprKind::Literal(ast::Literal::Int(num))))
     }
 
     fn next_bool(&mut self, token: Token) -> Result<ast::Expr> {
         let src = self.files.source(self.file);
         let src = token.span_ref().index(src);
         match src {
-            "true" => Ok(token.span().span(ast::ExprKind::Bool(true))),
-            "false" => Ok(token.span().span(ast::ExprKind::Bool(false))),
+            "true" => Ok(token
+                .span()
+                .span(ast::ExprKind::Literal(ast::Literal::Bool(true)))),
+            "false" => Ok(token
+                .span()
+                .span(ast::ExprKind::Literal(ast::Literal::Bool(false)))),
             _ => unreachable!(),
         }
     }

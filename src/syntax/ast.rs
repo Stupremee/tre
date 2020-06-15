@@ -55,9 +55,7 @@ pub type Expr = Spanned<ExprKind>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExprKind {
-    Int(i64),
-    String(String),
-    Bool(bool),
+    Literal(Literal),
     // TODO: Add support for floats
     // Float(u64),
     Binary {
@@ -88,6 +86,13 @@ impl fmt::Display for ExprKind {
             ExprKind::Grouping(expr) => write!(f, "({})", expr),
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Literal {
+    Int(i64),
+    String(String),
+    Bool(bool),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
