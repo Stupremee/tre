@@ -3,25 +3,24 @@
 
 use std::io::{self, prelude::*};
 use tre::diagnostic::*;
-use tre::syntax::{ast, parser::Result, Parser};
+use tre::syntax::{ast, Parser};
+use tre::Result;
 
 fn main() {
-    match do_it() {
-        Ok(t) => println!("got expr: {}", t),
-        // Err(d) => emit(&files, &d),
-        Err(err) => println!("{:#?}", err),
-    }
-}
-
-fn do_it() -> Result<ast::Expr> {
-    let mut files = Files::new();
-
     let mut line = String::new();
     let stdin = io::stdin();
     let mut handle = stdin.lock();
     handle.read_line(&mut line).unwrap();
 
+    let mut files = Files::new();
     let id = files.add("<stdin>", &line);
+    match do_it(&files, id) {
+        Ok(t) => println!("got expr: {}", t),
+        Err(d) => emit(&files, &d),
+    }
+}
+
+fn do_it(files: &Files<'_>, id: FileId) -> Result<ast::Expr> {
     let mut parser = Parser::new(&files, id);
     parser.next_expression()
 }

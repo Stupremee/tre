@@ -5,7 +5,7 @@ use super::{
 };
 use crate::{
     diagnostic::{Diagnostic, Files, Label},
-    Span, Spanned,
+    Result, Span,
 };
 
 use codespan::FileId;
@@ -35,8 +35,6 @@ macro_rules! binary_op {
     };
 }
 
-pub type Result<T> = std::result::Result<T, Spanned<SyntaxError>>;
-
 #[derive(Debug)]
 pub enum SyntaxError {
     Expected {
@@ -47,8 +45,9 @@ pub enum SyntaxError {
         expected: Vec<TokenType>,
         found: TokenType,
     },
+    ExpectedExpr,
     InvalidInteger(lexical::Error),
-    UnexpectedEof,
+    UnexpectedEof(TokenType),
 }
 
 #[derive(Debug)]
@@ -83,13 +82,14 @@ impl<'input> Parser<'input> {
     }
 
     fn eat(&mut self, ty: TokenType) -> Result<Token> {
-        match self.peek() {
+        let token = self.peek().cloned();
+        match token {
             Some(ref token) if token.data() == &ty => Ok(self.next().unwrap()),
-            Some(ref token) => Err(token.span().span(SyntaxError::Expected {
+            Some(ref token) => Err(self.make_diagnostic(SyntaxError::Expected {
                 expected: ty,
-                found: *token.data(),
+                found: *token.clone().data(),
             })),
-            None => Err(self.span.span(SyntaxError::UnexpectedEof)),
+            None => Err(self.make_diagnostic(SyntaxError::UnexpectedEof(ty))),
         }
     }
 
@@ -103,6 +103,52 @@ impl<'input> Parser<'input> {
             .into_iter()
             .map(|ty| self.next_is(*ty))
             .fold(false, |a, b| a || b)
+    }
+
+    // Error utilities
+
+    fn make_diagnostic(&self, err: SyntaxError) -> Diagnostic {
+        match err {
+            SyntaxError::Expected { expected, found } => self.new_error(
+                "unexpected token",
+                self.new_label(format!("expected '{}', but got '{}'", expected, found)),
+            ),
+            SyntaxError::ExpectedOneOf { expected, found } => self.new_error(
+                "unexpected token",
+                self.new_label(format!(
+                    "expected one of '{}', but got '{}'",
+                    expected
+                        .into_iter()
+                        .map(|ty| ty.to_string())
+                        .collect::<Vec<_>>()
+                        .join(" "),
+                    found
+                )),
+            ),
+            SyntaxError::ExpectedExpr => {
+                self.new_error("expected expression", self.new_label("expected expression"))
+            }
+            SyntaxError::InvalidInteger(err) => self.new_error(
+                "invalid integer",
+                self.new_label(format!("invalid integer: {:?}", err.code)),
+            ),
+            SyntaxError::UnexpectedEof(ty) => {
+                let span = self.span.end();
+                let label = Label::primary(self.file, Span::new(span, span))
+                    .with_message(format!("expected '{}', but found eof", ty));
+                self.new_error("unexpected eof", label)
+            }
+        }
+    }
+
+    fn new_error(&self, msg: impl Into<String>, primary_label: Label) -> Diagnostic {
+        Diagnostic::error()
+            .with_message(msg)
+            .with_labels(vec![primary_label])
+    }
+
+    fn new_label(&self, msg: impl Into<String>) -> Label {
+        Label::primary(self.file, self.span).with_message(msg)
     }
 }
 
@@ -169,7 +215,7 @@ impl<'input> Parser<'input> {
                     self.eat(TokenType::RightParen)?;
                     Ok(token.span().span(ast::ExprKind::Grouping(Box::new(expr))))
                 }
-                ty => Err(token.span().span(SyntaxError::ExpectedOneOf {
+                ty => Err(self.make_diagnostic(SyntaxError::ExpectedOneOf {
                     found: *ty,
                     expected: vec![
                         TokenType::LeftParen,
@@ -179,7 +225,7 @@ impl<'input> Parser<'input> {
                     ],
                 })),
             },
-            None => Err(self.span.span(SyntaxError::UnexpectedEof)),
+            None => Err(self.make_diagnostic(SyntaxError::ExpectedExpr)),
         }
     }
 
@@ -193,7 +239,7 @@ impl<'input> Parser<'input> {
         let src = self.files.source(self.file);
         let num = token.span_ref().index(src);
         let num = lexical::parse::<i64, _>(num)
-            .map_err(|err| token.span_ref().span(SyntaxError::InvalidInteger(err)))?;
+            .map_err(|err| self.make_diagnostic(SyntaxError::InvalidInteger(err)))?;
         Ok(token.span_ref().span(ast::ExprKind::Int(num)))
     }
 

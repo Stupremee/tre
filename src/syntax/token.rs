@@ -1,4 +1,5 @@
 use crate::Spanned;
+use std::fmt;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TokenType {
@@ -28,6 +29,7 @@ pub enum TokenType {
     Star,
     Slash,
     Colon,
+    Semicolon,
     Comma,
     Dot,
 
@@ -43,6 +45,47 @@ pub enum TokenType {
     Greater,
     LessEqual,
     Less,
+}
+
+impl fmt::Display for TokenType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let val = match self {
+            TokenType::String => "<string>",
+            TokenType::Float => "<float>",
+            TokenType::Integer => "<int>",
+            TokenType::Bool => "<bool>",
+            TokenType::Identifier => "<identifier>",
+            TokenType::Def => "def",
+            TokenType::Let => "let",
+            TokenType::Loop => "loop",
+            TokenType::While => "while",
+            TokenType::If => "if",
+            TokenType::Else => "else",
+            TokenType::Break => "break",
+            TokenType::Continue => "continue",
+            TokenType::Bang => "!",
+            TokenType::Plus => "+",
+            TokenType::Minus => "-",
+            TokenType::Star => "*",
+            TokenType::Slash => "/",
+            TokenType::Colon => ";",
+            TokenType::Semicolon => ";",
+            TokenType::Comma => ",",
+            TokenType::Dot => ".",
+            TokenType::LeftParen => "(",
+            TokenType::RightParen => ")",
+            TokenType::LeftCurly => "{",
+            TokenType::RightCurly => "}",
+            TokenType::Equal => "=",
+            TokenType::EqualEqual => "==",
+            TokenType::NotEqual => "!=",
+            TokenType::GreaterEqual => ">=",
+            TokenType::Greater => ">",
+            TokenType::LessEqual => "<=",
+            TokenType::Less => "<",
+        };
+        write!(f, "{}", val)
+    }
 }
 
 pub type Token = Spanned<TokenType>;

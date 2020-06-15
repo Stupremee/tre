@@ -32,13 +32,18 @@ impl Span {
     }
 
     #[inline]
-    pub fn end(self) -> Self {
-        Self(codespan::Span::new(self.0.end(), self.0.end()))
+    pub fn index<'s>(&self, slice: &'s str) -> &'s str {
+        &slice[Range::<usize>::from(self.0)]
     }
 
     #[inline]
-    pub fn index<'s>(&self, slice: &'s str) -> &'s str {
-        &slice[Range::<usize>::from(self.0)]
+    pub fn start(self) -> ByteIndex {
+        self.0.start()
+    }
+
+    #[inline]
+    pub fn end(self) -> ByteIndex {
+        self.0.end()
     }
 }
 
@@ -119,6 +124,7 @@ impl<T> DerefMut for Spanned<T> {
 }
 
 pub mod diagnostic {
+    pub use codespan::FileId;
     pub use codespan_reporting::diagnostic::{LabelStyle, Severity};
 
     pub type Files<'s> = codespan::Files<&'s str>;

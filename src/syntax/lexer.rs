@@ -67,6 +67,7 @@ impl<'input> Lexer<'input> {
             '*' => TokenType::Star,
             '/' => TokenType::Slash,
             ':' => TokenType::Colon,
+            ';' => TokenType::Semicolon,
             ',' => TokenType::Comma,
             '.' => TokenType::Dot,
             '(' => TokenType::LeftParen,
@@ -132,6 +133,7 @@ impl<'input> Lexer<'input> {
     }
 
     fn number(&mut self) -> Option<Token> {
+        // TODO: Support _ in numbers
         while self.peek().map_or(false, |c| c.is_digit(10)) {
             self.next();
         }
@@ -228,11 +230,11 @@ mod tests {
 
     #[test]
     fn test_integer() {
-        let s = "1337 1234_5678\n12321";
+        let s = "1337 12345678\n12321";
         let tokens = lex_input(s);
         let expected = vec![
             token!(Integer, s, "1337"),
-            token!(Integer, s, "1234_5678"),
+            token!(Integer, s, "12345678"),
             token!(Integer, s, "12321"),
         ];
         assert_eq!(expected, tokens);
@@ -266,7 +268,7 @@ mod tests {
 
     #[test]
     fn test_some_tokens() {
-        let s = "!! ++ = != ** * * :: ., == != < <= >= > / - - # - / != ===";
+        let s = "!! ++ = !=  * * :: ., == != < <= >= > / - - ;;; # - / != --- ;;;";
         let tokens: Vec<_> = lex_input(s).into_iter().map(|t| t.into_inner()).collect();
         let expected = vec![
             TokenType::Bang,
@@ -275,7 +277,6 @@ mod tests {
             TokenType::Plus,
             TokenType::Equal,
             TokenType::NotEqual,
-            TokenType::StarStar,
             TokenType::Star,
             TokenType::Star,
             TokenType::Colon,
@@ -291,6 +292,9 @@ mod tests {
             TokenType::Slash,
             TokenType::Minus,
             TokenType::Minus,
+            TokenType::Semicolon,
+            TokenType::Semicolon,
+            TokenType::Semicolon,
         ];
         assert_eq!(expected, tokens);
     }
@@ -302,6 +306,7 @@ mod tests {
             .into_iter()
             .map(|t| (t.0, t.span().index(s)))
             .collect();
+
         let expected = vec![
             (TokenType::String, r#"Hello, world"#),
             (TokenType::String, r#"Does this work?"#),
