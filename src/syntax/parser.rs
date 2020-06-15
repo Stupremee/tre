@@ -5,7 +5,7 @@ use super::{
 };
 use crate::{
     diagnostic::{Diagnostic, Files, Label},
-    Result, Span,
+    Result, Span, Spanned,
 };
 
 use codespan::FileId;
@@ -103,6 +103,20 @@ impl<'input> Parser<'input> {
             .into_iter()
             .map(|ty| self.next_is(*ty))
             .fold(false, |a, b| a || b)
+    }
+
+    fn synchronize(&mut self) {
+        self.next();
+        match self.peek().map(Spanned::data) {
+            Some(TokenType::Semicolon)
+            | Some(TokenType::Def)
+            | Some(TokenType::Let)
+            | Some(TokenType::Loop)
+            | Some(TokenType::While)
+            | Some(TokenType::If) => return,
+            Some(_) => self.next(),
+            None => None,
+        };
     }
 
     // Error utilities
