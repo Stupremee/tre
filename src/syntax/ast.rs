@@ -77,9 +77,7 @@ pub enum ExprKind {
 impl fmt::Display for ExprKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ExprKind::Int(val) => write!(f, "{}", val),
-            ExprKind::String(s) => write!(f, r#""{}""#, s),
-            ExprKind::Bool(b) => write!(f, "{}", b),
+            ExprKind::Literal(val) => write!(f, "{}", val),
             ExprKind::Binary { left, op, right } => write!(f, "({} {} {})", op, left, right),
             ExprKind::Unary { op, expr } => write!(f, "{}{}", op, expr),
             ExprKind::Call { name: _, args: _ } => unimplemented!(),
@@ -93,6 +91,16 @@ pub enum Literal {
     Int(i64),
     String(String),
     Bool(bool),
+}
+
+impl fmt::Display for Literal {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Literal::Int(x) => write!(f, "{}", x),
+            Literal::String(x) => write!(f, "{}", x),
+            Literal::Bool(x) => write!(f, "{}", x),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

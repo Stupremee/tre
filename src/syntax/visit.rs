@@ -1,4 +1,7 @@
-use super::ast::{DefArgument, Expr, ExprKind, Identifier, Item, ItemKind};
+use super::ast::{
+    BinaryOperation, DefArgument, Expr, ExprKind, Identifier, Item, ItemKind, Literal,
+    UnaryOperation,
+};
 
 pub trait ItemVisitor {
     type Output;
@@ -22,13 +25,25 @@ pub trait ExprVisitor {
 
     fn visit_expr(&mut self, expr: &Expr) -> Self::Output {
         match expr.data() {
-            ExprKind::Int(_) => self.visit_literal(expr),
-            ExprKind::String(_) => {}
-            ExprKind::Bool(_) => {}
-            ExprKind::Binary { left, op, right } => {}
-            ExprKind::Unary { op, expr } => {}
-            ExprKind::Call { name, args } => {}
-            ExprKind::Grouping(_) => {}
+            ExprKind::Literal(literal) => self.visit_literal(expr, literal),
+            ExprKind::Binary { left, op, right } => self.visit_binary(expr, left, op, right),
+            ExprKind::Unary { op, expr } => self.visit_unary(expr, op, expr),
+            ExprKind::Call { name, args } => self.visit_call(expr, name, args),
+            ExprKind::Grouping(expr) => self.visit_expr(expr),
         }
     }
+
+    fn visit_literal(&mut self, expr: &Expr, literal: &Literal) -> Self::Output;
+
+    fn visit_call(&mut self, expr: &Expr, name: &Identifier, args: &Vec<Expr>) -> Self::Output;
+
+    fn visit_binary(
+        &mut self,
+        expr: &Expr,
+        left: &Expr,
+        op: &BinaryOperation,
+        right: &Expr,
+    ) -> Self::Output;
+
+    fn visit_unary(&mut self, expr: &Expr, op: &UnaryOperation, right: &Expr) -> Self::Output;
 }
