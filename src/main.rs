@@ -3,8 +3,11 @@
 
 use std::io::{self, prelude::*};
 use tre::diagnostic::*;
-use tre::syntax::{ast, Parser};
-use tre::Result;
+use tre::syntax::{visit::ExprVisitor, Parser};
+use tre::{
+    interpreter::{Interpreter, Value},
+    Result,
+};
 
 fn main() {
     let mut line = String::new();
@@ -15,12 +18,14 @@ fn main() {
     let mut files = Files::new();
     let id = files.add("<stdin>", &line);
     match do_it(&files, id) {
-        Ok(t) => println!("got expr: {}", t),
+        Ok(t) => println!("result: {:?}", t),
         Err(d) => emit(&files, &d),
     }
 }
 
-fn do_it(files: &Files<'_>, id: FileId) -> Result<ast::Expr> {
+fn do_it(files: &Files<'_>, id: FileId) -> Result<Value> {
     let mut parser = Parser::new(&files, id);
-    parser.next_expression()
+    let expr = parser.next_expression()?;
+    let mut eval = Interpreter::new(id);
+    eval.visit_expr(&expr)
 }
