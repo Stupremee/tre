@@ -6,22 +6,17 @@ use crate::{
     diagnostic::{Diagnostic, FileId, Label},
     Result, Span,
 };
-use std::collections::HashMap;
 use std::fmt;
 
 #[allow(unused)]
-macro_rules! typecheck_value {
-    ($self:ident, $val:expr, $ty:ident) => {
-        match $val {
-            Value::$ty => {}
-            val => {
-                return Err($self.new_error(
-                    "invalid type",
-                    $self.new_label(format!("'{}' is invalid here", val)),
-                ))
-            }
+macro_rules! typecheck {
+    ($self:ident, $val:expr, $ty:ident, $span:expr, $expect:expr) => {{
+        if let Value::$ty(x) = $val {
+            Ok(x)
+        } else {
+            Err($self.type_error($val, $span, $expect))
         }
-    };
+    }};
 }
 
 #[derive(Debug)]
@@ -41,20 +36,14 @@ impl fmt::Display for Value {
     }
 }
 
-pub type Environment = HashMap<String, Value>;
-
 #[derive(Debug)]
 pub struct Interpreter {
-    env: Environment,
     file: FileId,
 }
 
 impl Interpreter {
     pub fn new(file: FileId) -> Self {
-        Self {
-            file,
-            env: HashMap::new(),
-        }
+        Self { file }
     }
 
     // Error utilities
@@ -97,25 +86,35 @@ impl ExprVisitor for Interpreter {
         op: &BinaryOperation,
         right: &Expr,
     ) -> Self::Output {
-        todo!()
+        let left_val = self.visit_expr(left)?;
+        let left = typecheck!(self, &left_val, Int, left.span(), "int")?;
+        let right_val = self.visit_expr(right)?;
+        let right = typecheck!(self, &right_val, Int, right.span(), "int")?;
+
+        match op {
+            BinaryOperation::Plus => Ok(Value::Int(left + right)),
+            BinaryOperation::Minus => Ok(Value::Int(left - right)),
+            BinaryOperation::Mul => Ok(Value::Int(left * right)),
+            BinaryOperation::Div => Ok(Value::Int(left / right)),
+            BinaryOperation::NotEqual => Ok(Value::Bool(left != right)),
+            BinaryOperation::EqualEqual => Ok(Value::Bool(left == right)),
+            BinaryOperation::Less => Ok(Value::Bool(left < right)),
+            BinaryOperation::LessEqual => Ok(Value::Bool(left <= right)),
+            BinaryOperation::Greater => Ok(Value::Bool(left > right)),
+            BinaryOperation::GreaterEqual => Ok(Value::Bool(left >= right)),
+        }
     }
 
     fn visit_unary(&mut self, _expr: &Expr, op: &UnaryOperation, right: &Expr) -> Self::Output {
         let val = self.visit_expr(right)?;
         match op {
             UnaryOperation::Negate => {
-                if let Value::Int(x) = val {
-                    Ok(Value::Int(-x))
-                } else {
-                    Err(self.type_error(&val, right.span(), "int"))
-                }
+                let x = typecheck!(self, &val, Int, right.span(), "int")?;
+                Ok(Value::Int(-x))
             }
             UnaryOperation::Not => {
-                if let Value::Bool(x) = val {
-                    Ok(Value::Bool(!x))
-                } else {
-                    Err(self.type_error(&val, right.span(), "bool"))
-                }
+                let x = typecheck!(self, &val, Bool, right.span(), "bool")?;
+                Ok(Value::Bool(!x))
             }
         }
     }

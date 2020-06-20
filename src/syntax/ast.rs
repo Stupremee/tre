@@ -57,8 +57,6 @@ pub type Expr = Spanned<ExprKind>;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExprKind {
     Literal(Literal),
-    // TODO: Add support for floats
-    // Float(u64),
     Binary {
         left: Box<Expr>,
         op: BinaryOperation,

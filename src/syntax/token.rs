@@ -5,7 +5,6 @@ use std::fmt;
 pub enum TokenType {
     // Literals
     String,
-    Float,
     Integer,
     Bool,
 
@@ -51,7 +50,6 @@ impl fmt::Display for TokenType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let val = match self {
             TokenType::String => "<string>",
-            TokenType::Float => "<float>",
             TokenType::Integer => "<int>",
             TokenType::Bool => "<bool>",
             TokenType::Identifier => "<identifier>",

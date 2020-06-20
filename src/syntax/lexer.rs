@@ -140,10 +140,6 @@ impl<'input> Lexer<'input> {
 
         if self.peek().map_or(false, |c| c == &'.') {
             self.next();
-            while self.peek().map_or(false, |c| c.is_digit(10)) {
-                self.next();
-            }
-            return Some(self.token(TokenType::Float));
         }
 
         Some(self.token(TokenType::Integer))
