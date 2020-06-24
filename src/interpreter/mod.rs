@@ -118,4 +118,8 @@ impl ExprVisitor for Interpreter {
             }
         }
     }
+
+    fn visit_variable(&mut self, expr: &Expr, name: &Identifier) -> Self::Output {
+        todo!()
+    }
 }

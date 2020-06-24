@@ -83,6 +83,7 @@ impl fmt::Display for ExprKind {
             ExprKind::Unary { op, expr } => write!(f, "{}{}", op, expr),
             ExprKind::Call { name: _, args: _ } => unimplemented!(),
             ExprKind::Grouping(expr) => write!(f, "({})", expr),
+            ExprKind::Variable(var) => write!(f, "{}", var),
         }
     }
 }

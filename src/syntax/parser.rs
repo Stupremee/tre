@@ -53,13 +53,13 @@ pub enum SyntaxError {
 #[derive(Debug)]
 pub struct Parser<'input> {
     file: FileId,
-    files: &'input Files<'input>,
+    files: &'input Files,
     tokens: Peekable<TokenStream<'input>>,
     span: Span,
 }
 
 impl<'input> Parser<'input> {
-    pub fn new(files: &'input Files<'input>, file_id: FileId) -> Self {
+    pub fn new(files: &'input Files, file_id: FileId) -> Self {
         let tokens = Lexer::new(files.source(file_id)).into_iter().peekable();
         Self {
             file: file_id,

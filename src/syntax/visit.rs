@@ -30,8 +30,11 @@ pub trait ExprVisitor {
             ExprKind::Unary { op, expr } => self.visit_unary(expr, op, expr),
             ExprKind::Call { name, args } => self.visit_call(expr, name, args),
             ExprKind::Grouping(expr) => self.visit_expr(expr),
+            ExprKind::Variable(name) => self.visit_variable(expr, name),
         }
     }
+
+    fn visit_variable(&mut self, expr: &Expr, name: &Identifier) -> Self::Output;
 
     fn visit_literal(&mut self, expr: &Expr, literal: &Literal) -> Self::Output;
 

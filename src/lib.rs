@@ -128,11 +128,11 @@ pub mod diagnostic {
     pub use codespan::FileId;
     pub use codespan_reporting::diagnostic::{LabelStyle, Severity};
 
-    pub type Files<'s> = codespan::Files<&'s str>;
+    pub type Files = codespan::Files<String>;
     pub type Diagnostic = codespan_reporting::diagnostic::Diagnostic<codespan::FileId>;
     pub type Label = codespan_reporting::diagnostic::Label<codespan::FileId>;
 
-    pub fn emit(files: &Files<'_>, diagnostic: &Diagnostic) {
+    pub fn emit(files: &Files, diagnostic: &Diagnostic) {
         use codespan_reporting::term::{self, termcolor};
 
         let mut stdout = termcolor::StandardStream::stdout(termcolor::ColorChoice::Auto);
