@@ -25,7 +25,7 @@ fn main() {
 
 fn do_it(files: &Files<'_>, id: FileId) -> Result<Value> {
     let mut parser = Parser::new(&files, id);
-    let expr = parser.next_expression()?;
+    let expr = parser.next_expr()?;
     let mut eval = Interpreter::new(id);
     eval.visit_expr(&expr)
 }

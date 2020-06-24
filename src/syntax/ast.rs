@@ -2,7 +2,8 @@ use crate::{syntax::TokenType, Spanned};
 use lasso::Spur;
 use std::fmt;
 
-pub type Identifier = Spanned<Spur>;
+// pub type Identifier = Spanned<Spur>;
+pub type Identifier = Spanned<String>;
 pub type Block = Vec<Stmt>;
 pub type Type = Spanned<TypeKind>;
 
@@ -57,6 +58,7 @@ pub type Expr = Spanned<ExprKind>;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ExprKind {
     Literal(Literal),
+    Variable(Identifier),
     Binary {
         left: Box<Expr>,
         op: BinaryOperation,

@@ -166,9 +166,24 @@ impl<'input> Parser<'input> {
     }
 }
 
+/// Other parsing
+impl Parser<'_> {
+    pub fn next_stmt(&mut self) -> Result<ast::Stmt> {
+        self.next_expr_stmt()
+    }
+
+    fn next_expr_stmt(&mut self) -> Result<ast::Stmt> {
+        let expr = self.next_expr()?;
+        let expr_span = expr.span_ref();
+        let semicolon = self.eat(TokenType::Semicolon)?.span();
+        let span = expr_span.merge(semicolon);
+        Ok(span.span(ast::StmtKind::Expr(expr)))
+    }
+}
+
 /// Expression parsing
-impl<'input> Parser<'input> {
-    pub fn next_expression(&mut self) -> Result<ast::Expr> {
+impl Parser<'_> {
+    pub fn next_expr(&mut self) -> Result<ast::Expr> {
         self.next_equality()
     }
 
@@ -221,11 +236,16 @@ impl<'input> Parser<'input> {
     fn next_primary(&mut self) -> Result<ast::Expr> {
         match self.next() {
             Some(token) => match token.data() {
+                TokenType::Identifier => {
+                    let span = token.span_ref();
+                    let name = span.span(span.index(self.files.source(self.file)).to_string());
+                    Ok(span.span(ast::ExprKind::Variable(name)))
+                }
                 TokenType::String => self.next_string(token),
                 TokenType::Integer => self.next_integer(token),
                 TokenType::Bool => self.next_bool(token),
                 TokenType::LeftParen => {
-                    let expr = self.next_expression()?;
+                    let expr = self.next_expr()?;
                     self.eat(TokenType::RightParen)?;
                     Ok(token.span().span(ast::ExprKind::Grouping(Box::new(expr))))
                 }
