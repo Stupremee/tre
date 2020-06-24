@@ -47,7 +47,7 @@ pub enum SyntaxError {
     },
     ExpectedExpr,
     InvalidInteger(lexical::Error),
-    UnexpectedEof(TokenType),
+    UnexpectedEof,
 }
 
 #[derive(Debug)]
@@ -89,7 +89,7 @@ impl<'input> Parser<'input> {
                 expected: ty,
                 found: *token.clone().data(),
             })),
-            None => Err(self.make_diagnostic(SyntaxError::UnexpectedEof(ty))),
+            None => Err(self.make_diagnostic(SyntaxError::UnexpectedEof)),
         }
     }
 
@@ -146,10 +146,10 @@ impl<'input> Parser<'input> {
                 "invalid integer",
                 self.new_label(format!("invalid integer: {:?}", err.code)),
             ),
-            SyntaxError::UnexpectedEof(ty) => {
+            SyntaxError::UnexpectedEof => {
                 let span = self.span.end();
                 let label = Label::primary(self.file, Span::new(span, span))
-                    .with_message(format!("expected '{}', but found eof", ty));
+                    .with_message("unexpected end of input");
                 self.new_error("unexpected eof", label)
             }
         }
@@ -169,7 +169,24 @@ impl<'input> Parser<'input> {
 /// Other parsing
 impl Parser<'_> {
     pub fn next_stmt(&mut self) -> Result<ast::Stmt> {
-        self.next_expr_stmt()
+        match self.peek() {
+            Some(token) => match token.data() {
+                TokenType::Let => self.next_let_stmt(),
+                _ => self.next_expr_stmt(),
+            },
+            None => Err(self.make_diagnostic(SyntaxError::UnexpectedEof)),
+        }
+    }
+
+    fn next_let_stmt(&mut self) -> Result<ast::Stmt> {
+        let let_token = self.eat(TokenType::Let)?;
+        let name = self.next_identifier()?;
+        self.eat(TokenType::Equal)?;
+        let val = self.next_expr()?;
+        let span = let_token.span().merge(val.span());
+
+        let stmt = ast::StmtKind::Let { name, val };
+        Ok(span.span(stmt))
     }
 
     fn next_expr_stmt(&mut self) -> Result<ast::Stmt> {
@@ -178,6 +195,12 @@ impl Parser<'_> {
         let semicolon = self.eat(TokenType::Semicolon)?.span();
         let span = expr_span.merge(semicolon);
         Ok(span.span(ast::StmtKind::Expr(expr)))
+    }
+
+    fn next_identifier(&mut self) -> Result<ast::Identifier> {
+        let token = self.eat(TokenType::Identifier)?;
+        let name = token.span_ref().index(self.files.source(self.file));
+        Ok(token.span().span(name.to_string()))
     }
 }
 

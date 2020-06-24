@@ -66,7 +66,7 @@ impl fmt::Display for TokenType {
             TokenType::Minus => "-",
             TokenType::Star => "*",
             TokenType::Slash => "/",
-            TokenType::Colon => ";",
+            TokenType::Colon => ":",
             TokenType::Semicolon => ";",
             TokenType::Comma => ",",
             TokenType::Dot => ".",

@@ -37,7 +37,6 @@ pub type Stmt = Spanned<StmtKind>;
 pub enum StmtKind {
     Let {
         name: Identifier,
-        ty: Type,
         val: Expr,
     },
     If {

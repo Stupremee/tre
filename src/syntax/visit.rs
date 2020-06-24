@@ -59,7 +59,7 @@ where
 
     fn visit_stmt(&mut self, stmt: &Stmt) -> <Self as StmtVisitor>::Output {
         match stmt.data() {
-            StmtKind::Let { name, ty, val } => self.visit_let(stmt, name, ty, val),
+            StmtKind::Let { name, val } => self.visit_let(stmt, name, val),
             StmtKind::If {
                 cond,
                 then,
@@ -92,7 +92,6 @@ where
         &mut self,
         stmt: &Stmt,
         name: &Identifier,
-        ty: &Type,
         val: &Expr,
     ) -> <Self as StmtVisitor>::Output;
 }
